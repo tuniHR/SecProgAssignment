@@ -25,9 +25,9 @@ def open_file(frame):
                     # Read the stored hash and salt from the file
                     stored_hash, stored_salt = file.readline().strip().split(',')
                     # Hash the provided password with the stored salt
-                    hash_attempt = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), bytes.fromhex(stored_salt), 100000)
-                    if(stored_hash == hash_attempt.hex()):
-                        messagebox.showinfo("Success", "File decrypted successfully!")
+                    hash_attempt = hashlib.sha256(password.encode('utf-8') + bytes.fromhex(stored_salt)).hexdigest()
+                    if(stored_hash == hash_attempt):
+                        #messagebox.showinfo("Success", "File decrypted successfully!")
                         FILE = file_path
                         generate_key(password, bytes.fromhex(stored_salt))
                         populate_frame(frame)
@@ -62,15 +62,16 @@ def init_new_file():
         try:
             password = ask_password()
             salt = secrets.token_bytes(32)
-            hashed_password = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+            hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
             with open(file_path, 'w') as file:
-                file.write(f"{hashed_password.hex()}, {salt.hex()}")
+                file.write(f"{hashed_password}, {salt.hex()}")
                 FILE = file_path
                 generate_key(password, salt)
                 
         except Exception as e:
             messagebox.showerror("Error", f"Error occurred while creating the file: {e}")
-    
+
+
 def add_password_entry(frame):
     if FILE != None:
         # Create a dialog window
@@ -102,7 +103,7 @@ def add_password_entry(frame):
             password = password_entry.get()
             if service and password:
                 add_entry(service, username, password, frame)
-                messagebox.showinfo("Success", "Password entry added successfully!")
+                #messagebox.showinfo("Success", "Password entry added successfully!")
                 dialog.destroy()
             else:
                 messagebox.showwarning("Warning", "Service and Password are required fields.")
@@ -123,6 +124,7 @@ def add_entry(service, username, password, frame):
     except Exception as e:
         messagebox.showinfo("Error", f"Error while writing {e}")
 
+
 def populate_frame(frame):
     try:
         for widget in frame.winfo_children():
@@ -134,21 +136,35 @@ def populate_frame(frame):
             next(file)  # Skip the first line
             for line in file:
                 decrypted = KEY.decrypt(bytes.fromhex(line))
-                print(decrypted)
                 plaintext = decrypted.decode("utf-8").strip().split(",")
-                print(plaintext)
+                
                 if len(plaintext) == 3:
                     card_frame = tk.Frame(frame, relief=tk.RIDGE, borderwidth=2)
-                    card_frame.grid(row=i, column=0, padx=5, pady=5, sticky="ew")
+                    card_frame.grid(row=i, column=1, padx=5, pady=5, sticky="ew")
 
-                    service_label = tk.Label(card_frame, text="Service: " + plaintext[0])
-                    service_label.pack()
+                    service_label = tk.Label(card_frame, text="Service:")
+                    service_label.grid(row=0, column=0, sticky="w")
 
-                    username_label = tk.Label(card_frame, text="Username: " + plaintext[1])
-                    username_label.pack()
+                    service_entry = tk.Entry(card_frame, state="normal")
+                    service_entry.insert(0, plaintext[0])
+                    service_entry.config(state="readonly")
+                    service_entry.grid(row=0, column=1, sticky="w")
 
-                    password_label = tk.Label(card_frame, text="Password: " + plaintext[2])
-                    password_label.pack()
+                    username_label = tk.Label(card_frame, text="Username:")
+                    username_label.grid(row=1, column=0, sticky="w")
+
+                    username_entry = tk.Entry(card_frame, state="normal")
+                    username_entry.insert(0, plaintext[1])
+                    username_entry.config(state="readonly")
+                    username_entry.grid(row=1, column=1, sticky="w")
+
+                    password_label = tk.Label(card_frame, text="Password:")
+                    password_label.grid(row=2, column=0, sticky="w")
+
+                    password_entry = tk.Entry(card_frame, state="normal")
+                    password_entry.insert(0, plaintext[2])
+                    password_entry.config(state="readonly")
+                    password_entry.grid(row=2, column=1, sticky="w")
 
                     i += 1
 
@@ -156,28 +172,53 @@ def populate_frame(frame):
         messagebox.showerror("Error", f"Error occurred while reading the file: {e}")
 
 def main():
-    # Your main program logic goes here
     root = tk.Tk()
     root.title("Password Manager")
-    root.geometry("400x300")
+    root.geometry("600x600")
 
-    # Create a menu bar
-    menubar = tk.Menu(root)
-    root.config(menu=menubar)
+    # Create a frame for the left section (buttons)
+    left_frame = tk.Frame(root)
+    left_frame.grid(row=0, column=0, padx=5, pady=5, sticky="n")
 
-    # Create menubar
-    menubar = tk.Menu(root)
-    root.config(menu=menubar)
+    # Add "Add Password Entry" button to the left section
+    add_password_button = tk.Button(left_frame, text="Add Password Entry", command=lambda: add_password_entry(inner_frame))
+    add_password_button.pack(fill=tk.X, padx=5, pady=5)
 
-    frame = tk.Frame(root)
-    frame.grid(row = 0, column=1, padx=10, pady=10)
+    # Create File menu
+    file_menu = tk.Menu(root)
+    file_menu.add_command(label="Open File", command=lambda: open_file(inner_frame))
+    file_menu.add_command(label="New Passwords File", command=init_new_file)
 
-    menubar.add_command(label="Open File", command=lambda: open_file(frame))
-    menubar.add_command(label="New Passwords File", command=init_new_file)
+    # Create menubar buttons and add them to the left section
+    open_file_button = tk.Button(left_frame, text="Open File", command=lambda: open_file(inner_frame))
+    open_file_button.pack(fill=tk.X, padx=5, pady=5)
+    new_file_button = tk.Button(left_frame, text="New Passwords File", command=init_new_file)
+    new_file_button.pack(fill=tk.X, padx=5, pady=5)
 
-    add_password_button = tk.Button(root, text="Add Password Entry", command=lambda: add_password_entry(frame))
-    add_password_button.grid(row=1, column=0, padx=5, pady=5)
+    # Create a frame for the right section (content)
+    right_frame = tk.Frame(root)
+    right_frame.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")  # Changed sticky from "n" to "nsew"
 
+    # Create a canvas
+    canvas = tk.Canvas(right_frame)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # Add a scrollbar
+    scrollbar = tk.Scrollbar(right_frame, orient=tk.VERTICAL, command=canvas.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    # Create a frame inside the canvas
+    inner_frame = tk.Frame(canvas)
+    inner_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+
+    # Configure scrollbar to always be visible
+    canvas.configure(yscrollcommand=scrollbar.set)
+    
+
+    # Configure grid weights to make right frame expandable
+    root.grid_rowconfigure(0, weight=1)
+    root.grid_columnconfigure(1, weight=1)
 
     # Run the application
     root.mainloop()
