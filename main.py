@@ -55,11 +55,12 @@ def generate_key(password, salt):
     KEY = Fernet(key)
     
     
-def init_new_file():
+def init_new_file(frame):
     global FILE
-    file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
+    file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
     if(file_path):
         try:
+            clear_password_frame(frame)
             password = ask_password()
             salt = secrets.token_bytes(32)
             hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
@@ -113,63 +114,179 @@ def add_password_entry(frame):
         save_button.grid(row=3, column=0, columnspan=2, padx=5, pady=5)
 
 def add_entry(service, username, password, frame):
-    entry = service+","+username+","+password
-    token = KEY.encrypt(entry.encode("utf-8"))
-    try:
-        with open(FILE, "a") as file:
-            file.write("\n")
-            file.write(token.hex())
-        
-        populate_frame(frame)
-    except Exception as e:
-        messagebox.showinfo("Error", f"Error while writing {e}")
+    if FILE != None:
+        entry = service+","+username+","+password
+        token = KEY.encrypt(entry.encode("utf-8"))
+        try:
+            with open(FILE, "a") as file:
+                file.write("\n")
+                file.write(token.hex())
+            
+            populate_frame(frame)
+        except Exception as e:
+            messagebox.showinfo("Error", f"Error while writing {e}")
+    else:
+        messagebox.showinfo("There must be open file to add password")
 
+def read_and_decrypt_content():
+    plaintextArray = []
+    with open(FILE, 'r') as file: 
+        next(file)  # Skip the first line
+        for line in file:
+            decrypted = KEY.decrypt(bytes.fromhex(line))
+            plaintext = decrypted.decode("utf-8").strip().split(",")
+            plaintextArray.append(plaintext)
+
+    return plaintextArray
+    
+def clear_password_frame(frame):
+    for widget in frame.winfo_children():
+        widget.destroy()
+
+def delete_card(frame, index):
+    try:
+        with open(FILE, 'r') as file:
+            lines = file.readlines()
+
+        # Check if the index is valid
+        if index < 0 or index >= len(lines):
+            return
+        
+        frame.destroy()
+
+        # Remove the line at the specified index
+        del lines[index]
+
+        # Write the modified content back to the file
+        with open(FILE, 'w') as file:
+            file.writelines(lines)
+    except Exception as e:
+         messagebox.showerror("Error", f"Error occurred: {e}")
+    
+
+def toggle_edit_mode(service_entry, username_entry, password_entry, edit_button, save_button):
+    if service_entry["state"] == "readonly":
+        # Switch to edit mode
+        service_entry.config(state="normal")
+        username_entry.config(state="normal")
+        password_entry.config(state="normal")
+        edit_button.config(state="disabled")
+        save_button.config(state="normal")
+    else:
+        # Switch back to readonly mode
+        service_entry.config(state="readonly")
+        username_entry.config(state="readonly")
+        password_entry.config(state="readonly")
+        save_button.config(state="disabled")
+
+def save_changes(service_entry, username_entry, password_entry, edit_button, save_button, index):
+
+    with open(FILE, 'r') as file:
+        lines = file.readlines()
+
+    # Check if the index is valid
+    if index < 0 or index >= len(lines):
+        return
+
+    # Get the new values from the entries
+    new_service = service_entry.get()
+    new_username = username_entry.get()
+    new_password = password_entry.get()
+
+    entry = new_service+","+new_username+","+new_password
+    token = KEY.encrypt(entry.encode("utf-8"))
+    lines[index] = token.hex()+'\n'
+    
+
+    with open(FILE, 'w') as file:
+        file.writelines(lines)
+
+    edit_button.config(state="normal")
+    toggle_edit_mode(service_entry, username_entry, password_entry, edit_button, save_button)
 
 def populate_frame(frame):
     try:
-        for widget in frame.winfo_children():
-            widget.destroy()
-    
-        with open(FILE, 'r') as file:
-            
-            i = 0
-            next(file)  # Skip the first line
-            for line in file:
-                decrypted = KEY.decrypt(bytes.fromhex(line))
-                plaintext = decrypted.decode("utf-8").strip().split(",")
-                
-                if len(plaintext) == 3:
+        
+        clear_password_frame(frame)
+        i = 0
+        passwordsArray = read_and_decrypt_content()
+        for passwordEntry in passwordsArray:
+             if len(passwordEntry) == 3:
                     card_frame = tk.Frame(frame, relief=tk.RIDGE, borderwidth=2)
                     card_frame.grid(row=i, column=1, padx=5, pady=5, sticky="ew")
 
                     service_label = tk.Label(card_frame, text="Service:")
                     service_label.grid(row=0, column=0, sticky="w")
 
-                    service_entry = tk.Entry(card_frame, state="normal")
-                    service_entry.insert(0, plaintext[0])
+                    service_entry = tk.Entry(card_frame, state="normal", width=50, justify="left")
+                    service_entry.insert(0, passwordEntry[0])
                     service_entry.config(state="readonly")
                     service_entry.grid(row=0, column=1, sticky="w")
 
                     username_label = tk.Label(card_frame, text="Username:")
                     username_label.grid(row=1, column=0, sticky="w")
 
-                    username_entry = tk.Entry(card_frame, state="normal")
-                    username_entry.insert(0, plaintext[1])
+                    username_entry = tk.Entry(card_frame, state="normal", width=50, justify="left")
+                    username_entry.insert(0, passwordEntry[1])
                     username_entry.config(state="readonly")
                     username_entry.grid(row=1, column=1, sticky="w")
 
                     password_label = tk.Label(card_frame, text="Password:")
                     password_label.grid(row=2, column=0, sticky="w")
 
-                    password_entry = tk.Entry(card_frame, state="normal")
-                    password_entry.insert(0, plaintext[2])
+                    password_entry = tk.Entry(card_frame, state="normal", width=50, justify="left")
+                    password_entry.insert(0, passwordEntry[2])
                     password_entry.config(state="readonly")
                     password_entry.grid(row=2, column=1, sticky="w")
 
-                    i += 1
+                    save_button = tk.Button(card_frame, text="Save", state="disabled")
+
+                    edit_button = tk.Button(card_frame, text="Edit")
+
+                    edit_button.config(command=lambda se=service_entry, ue=username_entry, pe=password_entry, eb=edit_button, sb=save_button: toggle_edit_mode(se, ue, pe, eb, sb))
+                    edit_button.grid(row=3, column=0, pady=5)
+                    save_button.config(command=lambda se=service_entry, ue=username_entry, pe=password_entry, eb=edit_button, sb=save_button, index=i+1: save_changes(se, ue, pe, eb, sb, index))
+                    save_button.grid(row=3, column=1, pady=5)
+
+                
+                    delete_button = tk.Button(card_frame, text="Delete", command=lambda frame=card_frame, index=i+1: delete_card(frame, index))
+                    delete_button.grid(row=3, column=2, pady=5)
+
+                    i += 1        
 
     except Exception as e:
-        messagebox.showerror("Error", f"Error occurred while reading the file: {e}")
+        messagebox.showerror("Error", f"Error occurred: {e}")
+
+def change_password():
+    if FILE is not None:
+        try:
+            password = ask_password()
+            salt = secrets.token_bytes(32)
+            hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
+            passwordsArray = read_and_decrypt_content()
+            with open(FILE, 'w') as file: 
+                file.write(f"{hashed_password}, {salt.hex()}")
+                generate_key(password, salt)
+                
+                for passwordEntry in passwordsArray:
+                    if len(passwordEntry) == 3:
+                        entry = passwordEntry[0]+","+passwordEntry[1]+","+passwordEntry[2]
+                        token = KEY.encrypt(entry.encode("utf-8"))
+                        file.write("\n")
+                        file.write(token.hex())
+
+
+        except Exception as e:
+            messagebox.showinfo("Error", f"Error while writing {e}")
+    else:
+        messagebox.showinfo("Error","There must be open file to change password")
+
+def clear_passwords(frame):
+    global FILE
+    global KEY
+    clear_password_frame(frame)
+    FILE = None
+    KEY = None
 
 def main():
     root = tk.Tk()
@@ -181,19 +298,24 @@ def main():
     left_frame.grid(row=0, column=0, padx=5, pady=5, sticky="n")
 
     # Add "Add Password Entry" button to the left section
-    add_password_button = tk.Button(left_frame, text="Add Password Entry", command=lambda: add_password_entry(inner_frame))
-    add_password_button.pack(fill=tk.X, padx=5, pady=5)
+    
 
     # Create File menu
     file_menu = tk.Menu(root)
-    file_menu.add_command(label="Open File", command=lambda: open_file(inner_frame))
-    file_menu.add_command(label="New Passwords File", command=init_new_file)
+    # file_menu.add_command(label="Open File", command=lambda: open_file(inner_frame))
+    # file_menu.add_command(label="New Passwords File", command=init_new_file)
 
     # Create menubar buttons and add them to the left section
     open_file_button = tk.Button(left_frame, text="Open File", command=lambda: open_file(inner_frame))
     open_file_button.pack(fill=tk.X, padx=5, pady=5)
-    new_file_button = tk.Button(left_frame, text="New Passwords File", command=init_new_file)
+    new_file_button = tk.Button(left_frame, text="New Passwords File", command=lambda:init_new_file(inner_frame))
     new_file_button.pack(fill=tk.X, padx=5, pady=5)
+    add_password_button = tk.Button(left_frame, text="Add Password Entry", command=lambda: add_password_entry(inner_frame))
+    add_password_button.pack(fill=tk.X, padx=5, pady=5)
+    change_password_button = tk.Button(left_frame, text="Change Password", command=change_password)
+    change_password_button.pack(fill=tk.X, padx=5, pady=5)
+    clear_button = tk.Button(left_frame, text="Clear all", command=lambda:clear_passwords(inner_frame))
+    clear_button.pack(fill=tk.X, padx=5, pady=5)
 
     # Create a frame for the right section (content)
     right_frame = tk.Frame(root)
