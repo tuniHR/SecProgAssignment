@@ -1,15 +1,12 @@
 import tkinter as tk
 import hashlib
 import secrets
-import base64
 from tkinter import filedialog
 from tkinter import messagebox
 from tkinter import simpledialog
-from tkinter import ttk
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-
+from Crypto.Cipher import AES
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Hash import SHA512
 
 FILE = None
 KEY = None
@@ -27,7 +24,6 @@ def open_file(frame):
                     # Hash the provided password with the stored salt
                     hash_attempt = hashlib.sha256(password.encode('utf-8') + bytes.fromhex(stored_salt)).hexdigest()
                     if(stored_hash == hash_attempt):
-                        #messagebox.showinfo("Success", "File decrypted successfully!")
                         FILE = file_path
                         generate_key(password, bytes.fromhex(stored_salt))
                         populate_frame(frame)
@@ -45,14 +41,8 @@ def ask_password():
 
 def generate_key(password, salt):
     global KEY
-    kdf = PBKDF2HMAC(
-    algorithm=hashes.SHA256(),
-    length=32,
-    salt=salt,
-    iterations=480000,
-    )
-    key = base64.urlsafe_b64encode(kdf.derive(password.encode("utf-8")))
-    KEY = Fernet(key)
+    key = PBKDF2(password, salt, 32, count=1000000, hmac_hash_module=SHA512)
+    KEY = key
     
     
 def init_new_file(frame):
@@ -94,8 +84,12 @@ def add_password_entry(frame):
         # Password entry field
         password_label = tk.Label(dialog, text="Password:")
         password_label.grid(row=2, column=0, padx=5, pady=5)
-        password_entry = tk.Entry(dialog)
+        password_entry = tk.Entry(dialog, show="*")
         password_entry.grid(row=2, column=1, padx=5, pady=5)
+
+        password_visibility_button = tk.Button(dialog, text="Show Password" )
+        password_visibility_button.config(command=lambda pe=password_entry, pvb = password_visibility_button:  toggle_password_visibility(pe, pvb))
+        password_visibility_button.grid(row=2, column=2, padx=5, pady=5)
 
         # Function to handle button click
         def save_entry():
@@ -116,26 +110,38 @@ def add_password_entry(frame):
 def add_entry(service, username, password, frame):
     if FILE != None:
         entry = service+","+username+","+password
-        token = KEY.encrypt(entry.encode("utf-8"))
+        cipher = AES.new(KEY, AES.MODE_EAX)
+        nonce = cipher.nonce
+        ciphertext, tag = cipher.encrypt_and_digest(entry.encode('utf-8'))
+        line = ciphertext.hex()+ "," + nonce.hex() + "," + tag.hex()
+
         try:
             with open(FILE, "a") as file:
                 file.write("\n")
-                file.write(token.hex())
+                file.write(line)
             
             populate_frame(frame)
         except Exception as e:
             messagebox.showinfo("Error", f"Error while writing {e}")
     else:
-        messagebox.showinfo("There must be open file to add password")
+        messagebox.showinfo("Error", "There must be open file to add password")
 
 def read_and_decrypt_content():
     plaintextArray = []
     with open(FILE, 'r') as file: 
         next(file)  # Skip the first line
         for line in file:
-            decrypted = KEY.decrypt(bytes.fromhex(line))
-            plaintext = decrypted.decode("utf-8").strip().split(",")
-            plaintextArray.append(plaintext)
+            encrypted_array = line.strip().split(",")
+            if len(encrypted_array) == 3:
+                cipher = AES.new(KEY, AES.MODE_EAX, nonce=bytes.fromhex(encrypted_array[1]))
+                plaintext = cipher.decrypt(bytes.fromhex(encrypted_array[0]))
+                try:
+                    plaintext = plaintext.decode("utf-8").strip().split(",")
+                    cipher.verify(bytes.fromhex(encrypted_array[2]))
+                    plaintextArray.append(plaintext)
+                except ValueError:
+                    messagebox.showinfo("Error", "Content corrupted")
+                    return []
 
     return plaintextArray
     
@@ -163,6 +169,15 @@ def delete_card(frame, index):
     except Exception as e:
          messagebox.showerror("Error", f"Error occurred: {e}")
     
+
+def toggle_password_visibility(password_entry, pvb):
+    current_state = password_entry.cget("show")
+    if current_state == "*":
+        password_entry.config(show="")
+        pvb.config(text="Hide Password")
+    else:
+        password_entry.config(show="*")
+        pvb.config(text="Show Password")
 
 def toggle_edit_mode(service_entry, username_entry, password_entry, edit_button, save_button):
     if service_entry["state"] == "readonly":
@@ -194,8 +209,12 @@ def save_changes(service_entry, username_entry, password_entry, edit_button, sav
     new_password = password_entry.get()
 
     entry = new_service+","+new_username+","+new_password
-    token = KEY.encrypt(entry.encode("utf-8"))
-    lines[index] = token.hex()+'\n'
+    cipher = AES.new(KEY, AES.MODE_EAX)
+    nonce = cipher.nonce
+    ciphertext, tag = cipher.encrypt_and_digest(entry.encode('utf-8'))
+    line = ciphertext.hex()+ "," + nonce.hex() + "," + tag.hex()
+
+    lines[index] = line +'\n'
     
 
     with open(FILE, 'w') as file:
@@ -234,7 +253,7 @@ def populate_frame(frame):
                     password_label = tk.Label(card_frame, text="Password:")
                     password_label.grid(row=2, column=0, sticky="w")
 
-                    password_entry = tk.Entry(card_frame, state="normal", width=50, justify="left")
+                    password_entry = tk.Entry(card_frame, state="normal", width=50, justify="left", show="*")
                     password_entry.insert(0, passwordEntry[2])
                     password_entry.config(state="readonly")
                     password_entry.grid(row=2, column=1, sticky="w")
@@ -251,6 +270,10 @@ def populate_frame(frame):
                 
                     delete_button = tk.Button(card_frame, text="Delete", command=lambda frame=card_frame, index=i+1: delete_card(frame, index))
                     delete_button.grid(row=3, column=2, pady=5)
+
+                    password_visibility_button = tk.Button(card_frame, text="Show Password" )
+                    password_visibility_button.config(command=lambda pe=password_entry, pvb = password_visibility_button:  toggle_password_visibility(pe, pvb))
+                    password_visibility_button.grid(row=2, column=2, sticky="w", padx=(10, 0))
 
                     i += 1        
 
@@ -271,9 +294,13 @@ def change_password():
                 for passwordEntry in passwordsArray:
                     if len(passwordEntry) == 3:
                         entry = passwordEntry[0]+","+passwordEntry[1]+","+passwordEntry[2]
-                        token = KEY.encrypt(entry.encode("utf-8"))
+                        
+                        cipher = AES.new(KEY, AES.MODE_EAX)
+                        nonce = cipher.nonce
+                        ciphertext, tag = cipher.encrypt_and_digest(entry.encode('utf-8'))
+                        line = ciphertext.hex()+ "," + nonce.hex() + "," + tag.hex()
                         file.write("\n")
-                        file.write(token.hex())
+                        file.write(line)
 
 
         except Exception as e:
@@ -299,11 +326,7 @@ def main():
 
     # Add "Add Password Entry" button to the left section
     
-
-    # Create File menu
-    file_menu = tk.Menu(root)
-    # file_menu.add_command(label="Open File", command=lambda: open_file(inner_frame))
-    # file_menu.add_command(label="New Passwords File", command=init_new_file)
+    
 
     # Create menubar buttons and add them to the left section
     open_file_button = tk.Button(left_frame, text="Open File", command=lambda: open_file(inner_frame))
