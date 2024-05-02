@@ -1,4 +1,3 @@
-import tkinter as tk
 import hashlib
 import secrets
 from tkinter import filedialog
@@ -7,12 +6,12 @@ from tkinter import simpledialog
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA512
-from gui import *
+import gui as ui
 
 FILE = None
 KEY = None
 
-def open_file(frame):
+def open_file(root, frame):
     global FILE
     file_path = filedialog.askopenfilename(title="Select Password File")
     if file_path:
@@ -27,7 +26,7 @@ def open_file(frame):
                     if(stored_hash == hash_attempt):
                         FILE = file_path
                         generate_key(password, bytes.fromhex(stored_salt))
-                        populate_frame(frame)
+                        ui.populate_frame(root, frame)
                         
                     else:
                         messagebox.showinfo("Failure", "Incorrect password!")
@@ -51,7 +50,7 @@ def init_new_file(frame):
     file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
     if(file_path):
         try:
-            clear_password_frame(frame)
+            ui.clear_password_frame(frame)
             password = ask_password()
             salt = secrets.token_bytes(32)
             hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
@@ -65,7 +64,7 @@ def init_new_file(frame):
 
 
 
-def add_entry(service, username, password, frame):
+def add_entry(root, service, username, password, frame):
     if isFileOpen():
         entry = service+","+username+","+password
         cipher = AES.new(KEY, AES.MODE_EAX)
@@ -78,7 +77,7 @@ def add_entry(service, username, password, frame):
                 file.write("\n")
                 file.write(line)
             
-            populate_frame(frame)
+            ui.populate_frame(root, frame)
         except Exception as e:
             messagebox.showinfo("Error", f"Error while writing {e}")
     else:
@@ -104,6 +103,18 @@ def read_and_decrypt_content():
     return plaintextArray
     
 
+def copy_to_clipboard(root, entry):
+    clear_clipboard(root)
+
+    # Get text from the Entry widget
+    text = entry.get()
+    
+    # Append the text to the clipboard
+    root.clipboard_append(text)
+
+def clear_clipboard(root):
+    # Clear the clipboard
+    root.clipboard_clear()
 
 def delete_card(frame, index):
     try:
@@ -153,7 +164,7 @@ def save_changes(service_entry, username_entry, password_entry, edit_button, sav
         file.writelines(lines)
 
     edit_button.config(state="normal")
-    toggle_edit_mode(service_entry, username_entry, password_entry, edit_button, save_button)
+    ui.toggle_edit_mode(service_entry, username_entry, password_entry, edit_button, save_button)
 
 
 def change_password():
@@ -187,7 +198,7 @@ def change_password():
 def clear_passwords(frame):
     global FILE
     global KEY
-    clear_password_frame(frame)
+    ui.clear_password_frame(frame)
     FILE = None
     KEY = None
 
@@ -198,7 +209,7 @@ def isFileOpen():
         return False
 
 def main():
-    mainWindow()
+    ui.mainWindow()
 
 
 if __name__ == "__main__":

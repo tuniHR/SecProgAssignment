@@ -1,10 +1,7 @@
 import tkinter as tk
-from tkinter import filedialog
 from tkinter import messagebox
-from tkinter import simpledialog
 
-from main import init_new_file, open_file, isFileOpen, read_and_decrypt_content, change_password, clear_passwords, add_entry, save_changes, delete_card
-
+from main import *
 
 def toggle_password_visibility(password_entry, pvb):
     current_state = password_entry.cget("show")
@@ -36,7 +33,7 @@ def clear_password_frame(frame):
     for widget in frame.winfo_children():
         widget.destroy()
 
-def add_password_entry(frame):
+def add_password_entry(root, frame):
     if isFileOpen():
         # Create a dialog window
         dialog = tk.Toplevel()
@@ -70,7 +67,7 @@ def add_password_entry(frame):
             username = username_entry.get()
             password = password_entry.get()
             if service and password:
-                add_entry(service, username, password, frame)
+                add_entry(root, service, username, password, frame)
                 #messagebox.showinfo("Success", "Password entry added successfully!")
                 dialog.destroy()
             else:
@@ -82,7 +79,7 @@ def add_password_entry(frame):
 
 
 
-def populate_frame(frame):
+def populate_frame(root, frame):
     try:
         
         clear_password_frame(frame)
@@ -117,6 +114,8 @@ def populate_frame(frame):
                     password_entry.config(state="readonly")
                     password_entry.grid(row=2, column=1, sticky="w")
 
+                    
+
                     save_button = tk.Button(card_frame, text="Save", state="disabled")
 
                     edit_button = tk.Button(card_frame, text="Edit")
@@ -134,6 +133,10 @@ def populate_frame(frame):
                     password_visibility_button.config(command=lambda pe=password_entry, pvb = password_visibility_button:  toggle_password_visibility(pe, pvb))
                     password_visibility_button.grid(row=2, column=2, sticky="w", padx=(10, 0))
 
+                    copy_password_button = tk.Button(card_frame, text="Copy Password")
+                    copy_password_button.config(command=lambda pe=password_entry: copy_to_clipboard(root, pe))
+                    copy_password_button.grid(row=2, column=3, sticky="w", padx=(10, 0))
+
                     i += 1        
 
     except Exception as e:
@@ -150,11 +153,11 @@ def mainWindow():
     left_frame.grid(row=0, column=0, padx=5, pady=5, sticky="n")
 
     # Create menu style buttons and add them to the left section
-    open_file_button = tk.Button(left_frame, text="Open File", command=lambda: open_file(inner_frame))
+    open_file_button = tk.Button(left_frame, text="Open File", command=lambda: open_file(root, inner_frame))
     open_file_button.pack(fill=tk.X, padx=5, pady=5)
     new_file_button = tk.Button(left_frame, text="New Passwords File", command=lambda:init_new_file(inner_frame))
     new_file_button.pack(fill=tk.X, padx=5, pady=5)
-    add_password_button = tk.Button(left_frame, text="Add Password Entry", command=lambda: add_password_entry(inner_frame))
+    add_password_button = tk.Button(left_frame, text="Add Password Entry", command=lambda: add_password_entry(root, inner_frame))
     add_password_button.pack(fill=tk.X, padx=5, pady=5)
     change_password_button = tk.Button(left_frame, text="Change Password", command=change_password)
     change_password_button.pack(fill=tk.X, padx=5, pady=5)
