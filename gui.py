@@ -78,6 +78,17 @@ def add_password_entry(root, frame):
         save_button.grid(row=3, column=0, columnspan=2, padx=5, pady=5)
 
 
+def new_password_generation():
+    dialog = tk.Toplevel()
+    dialog.title("New Password")
+
+    password = generate_new_password()
+    password_entry = tk.Entry(dialog, state="normal", width=50)
+    password_entry.insert(0, password)
+    password_entry.config(state="readonly")
+    password_entry.pack()
+    copy_button = tk.Button(dialog, text="Copy to Clipboard", command=lambda pe=password_entry: copy_to_clipboard(dialog, pe))
+    copy_button.pack(padx=10, pady=5)
 
 def populate_frame(root, frame):
     try:
@@ -113,8 +124,6 @@ def populate_frame(root, frame):
                     password_entry.insert(0, passwordEntry[2])
                     password_entry.config(state="readonly")
                     password_entry.grid(row=2, column=1, sticky="w")
-
-                    
 
                     save_button = tk.Button(card_frame, text="Save", state="disabled")
 
@@ -152,17 +161,45 @@ def mainWindow():
     left_frame = tk.Frame(root)
     left_frame.grid(row=0, column=0, padx=5, pady=5, sticky="n")
 
+    # Create labels for sections
+    file_section_label = tk.Label(left_frame, text="File Section")
+    file_section_label.pack(fill=tk.X, padx=5, pady=5)
+
+    # Add separator line above
+    separator1_upper = tk.Frame(left_frame, height=1, width=200, bg="black")
+    separator1_upper.pack(fill=tk.X, padx=5, pady=5)
+
     # Create menu style buttons and add them to the left section
     open_file_button = tk.Button(left_frame, text="Open File", command=lambda: open_file(root, inner_frame))
     open_file_button.pack(fill=tk.X, padx=5, pady=5)
     new_file_button = tk.Button(left_frame, text="New Passwords File", command=lambda:init_new_file(inner_frame))
     new_file_button.pack(fill=tk.X, padx=5, pady=5)
+
+    # Add separator line below
+    separator1_lower = tk.Frame(left_frame, height=1, width=200, bg="black")
+    separator1_lower.pack(fill=tk.X, padx=5, pady=5)
+
+    password_section_label = tk.Label(left_frame, text="Password Section")
+    password_section_label.pack(fill=tk.X, padx=5, pady=5)
+
+    # Add separator line above
+    separator2_upper = tk.Frame(left_frame, height=1, width=200, bg="black")
+    separator2_upper.pack(fill=tk.X, padx=5, pady=5)
+
     add_password_button = tk.Button(left_frame, text="Add Password Entry", command=lambda: add_password_entry(root, inner_frame))
     add_password_button.pack(fill=tk.X, padx=5, pady=5)
     change_password_button = tk.Button(left_frame, text="Change Password", command=change_password)
     change_password_button.pack(fill=tk.X, padx=5, pady=5)
+
+    new_password_button = tk.Button(left_frame, text="Generate Password", command=new_password_generation);
+    new_password_button.pack(fill=tk.X, padx=5, pady=5)
+
     clear_button = tk.Button(left_frame, text="Clear all", command=lambda:clear_passwords(inner_frame))
     clear_button.pack(fill=tk.X, padx=5, pady=5)
+
+    # Add separator line below
+    separator2_lower = tk.Frame(left_frame, height=1, width=200, bg="black")
+    separator2_lower.pack(fill=tk.X, padx=5, pady=5)
 
     # Create a frame for the right section (content)
     right_frame = tk.Frame(root)
@@ -183,7 +220,6 @@ def mainWindow():
 
     # Configure scrollbar to always be visible
     canvas.configure(yscrollcommand=scrollbar.set)
-    
 
     # Configure grid weights to make right frame expandable
     root.grid_rowconfigure(0, weight=1)

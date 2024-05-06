@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+import string
 from tkinter import filedialog
 from tkinter import messagebox
 from tkinter import simpledialog
@@ -38,12 +39,28 @@ def open_file(root, frame):
 def ask_password():
     password = simpledialog.askstring("Password", "Enter password:", show='*')
     return password
+    
+def new_password():
+    while True:
+        # Ask for the password twice
+        password1 = simpledialog.askstring("Password", "Enter password:", show='*')
+        password2 = simpledialog.askstring("Password", "Enter password again:", show='*')
+
+        # Check if passwords match
+        if password1 == password2:
+            return password1
+
 
 def generate_key(password, salt):
     global KEY
     key = PBKDF2(password, salt, 32, count=1000000, hmac_hash_module=SHA512)
     KEY = key
-    
+
+def generate_new_password(length=16):
+    alphabet = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(secrets.choice(alphabet) for i in range(length))
+    return password
+
     
 def init_new_file(frame):
     global FILE
@@ -51,7 +68,7 @@ def init_new_file(frame):
     if(file_path):
         try:
             ui.clear_password_frame(frame)
-            password = ask_password()
+            password = new_password()
             salt = secrets.token_bytes(32)
             hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
             with open(file_path, 'w') as file:
@@ -170,7 +187,7 @@ def save_changes(service_entry, username_entry, password_entry, edit_button, sav
 def change_password():
     if isFileOpen():
         try:
-            password = ask_password()
+            password = new_password()
             salt = secrets.token_bytes(32)
             hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
             passwordsArray = read_and_decrypt_content()
