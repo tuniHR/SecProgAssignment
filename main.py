@@ -16,7 +16,7 @@ def open_file(root, frame):
     global FILE
     file_path = filedialog.askopenfilename(title="Select Password File")
     if file_path:
-        password = ask_password()
+        password = ui.ask_password()
         if password:
             try:
                  with open(file_path, 'r') as file:
@@ -36,20 +36,6 @@ def open_file(root, frame):
         else:
             messagebox.showwarning("Warning", "No password entered.")
 
-def ask_password():
-    password = simpledialog.askstring("Password", "Enter password:", show='*')
-    return password
-    
-def new_password():
-    while True:
-        # Ask for the password twice
-        password1 = simpledialog.askstring("Password", "Enter password:", show='*')
-        password2 = simpledialog.askstring("Password", "Enter password again:", show='*')
-
-        # Check if passwords match
-        if password1 == password2:
-            return password1
-
 
 def generate_key(password, salt):
     global KEY
@@ -68,13 +54,14 @@ def init_new_file(frame):
     if(file_path):
         try:
             ui.clear_password_frame(frame)
-            password = new_password()
-            salt = secrets.token_bytes(32)
-            hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
-            with open(file_path, 'w') as file:
-                file.write(f"{hashed_password}, {salt.hex()}")
-                FILE = file_path
-                generate_key(password, salt)
+            password = ui.new_password()
+            if password:
+                salt = secrets.token_bytes(32)
+                hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
+                with open(file_path, 'w') as file:
+                    file.write(f"{hashed_password}, {salt.hex()}")
+                    FILE = file_path
+                    generate_key(password, salt)
                 
         except Exception as e:
             messagebox.showerror("Error", f"Error occurred while creating the file: {e}")
@@ -187,7 +174,7 @@ def save_changes(service_entry, username_entry, password_entry, edit_button, sav
 def change_password():
     if isFileOpen():
         try:
-            password = new_password()
+            password = ui.new_password()
             salt = secrets.token_bytes(32)
             hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
             passwordsArray = read_and_decrypt_content()

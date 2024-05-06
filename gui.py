@@ -151,6 +151,43 @@ def populate_frame(root, frame):
     except Exception as e:
         messagebox.showerror("Error", f"Error occurred: {e}")
 
+    
+def new_password():
+    popup = tk.Toplevel()
+    popup.title("Password")
+    
+    password_entry = tk.Entry(popup, show="*")
+    password_entry.grid(row=0, column=1, padx=5, pady=5)
+    password_entry_label = tk.Label(popup, text="Enter password:")
+    password_entry_label.grid(row=0, column=0, padx=5, pady=5)
+    
+    confirm_entry = tk.Entry(popup, show="*")
+    confirm_entry.grid(row=1, column=1, padx=5, pady=5)
+    confirm_entry_label = tk.Label(popup, text="Confirm password:")
+    confirm_entry_label.grid(row=1, column=0, padx=5, pady=5)
+
+    def check_passwords():
+        password = password_entry.get()
+        confirm_password = confirm_entry.get()
+        if password == confirm_password:
+            popup.password = password  # Store the password as an attribute of the popup
+            popup.destroy()
+        else:
+            messagebox.showerror("Error", "Passwords do not match. Please try again.")
+    
+    submit_button = tk.Button(popup, text="Submit", command=check_passwords)
+    submit_button.grid(row=2, columnspan=2, padx=5, pady=5)
+    
+    # This line is added to make sure the popup window waits for user input
+    popup.wait_window(popup)
+    
+    # Return the password after the window is destroyed
+    return getattr(popup, "password", None)
+
+def ask_password():
+    password = simpledialog.askstring("Password", "Enter password:", show='*')
+    return password
+
 
 def mainWindow():
     root = tk.Tk()
