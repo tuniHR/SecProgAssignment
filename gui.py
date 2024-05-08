@@ -70,7 +70,6 @@ def add_password_entry(root, frame):
             password = password_entry.get()
             if service and password:
                 add_entry(root, service, username, password, frame)
-                #messagebox.showinfo("Success", "Password entry added successfully!")
                 dialog.destroy()
             else:
                 messagebox.showwarning("Warning", "Service and Password are required fields.")
