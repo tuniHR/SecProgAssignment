@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import simpledialog
 
 from main import *
 
@@ -33,6 +34,7 @@ def clear_password_frame(frame):
     for widget in frame.winfo_children():
         widget.destroy()
 
+# dialog for adding new password
 def add_password_entry(root, frame):
     if isFileOpen():
         # Create a dialog window
@@ -77,7 +79,7 @@ def add_password_entry(root, frame):
         save_button = tk.Button(dialog, text="Save", command=save_entry)
         save_button.grid(row=3, column=0, columnspan=2, padx=5, pady=5)
 
-
+# popup for randomly generated password
 def new_password_generation():
     dialog = tk.Toplevel()
     dialog.title("New Password")
@@ -90,9 +92,10 @@ def new_password_generation():
     copy_button = tk.Button(dialog, text="Copy to Clipboard", command=lambda pe=password_entry: copy_to_clipboard(dialog, pe))
     copy_button.pack(padx=10, pady=5)
 
+# display password and username along with the related serivice
 def populate_frame(root, frame):
     try:
-        
+        # clear the frame before
         clear_password_frame(frame)
         i = 0
         passwordsArray = read_and_decrypt_content()
@@ -101,6 +104,7 @@ def populate_frame(root, frame):
                     card_frame = tk.Frame(frame, relief=tk.RIDGE, borderwidth=2)
                     card_frame.grid(row=i, column=1, padx=5, pady=5, sticky="ew")
 
+                    # labels and entries
                     service_label = tk.Label(card_frame, text="Service:")
                     service_label.grid(row=0, column=0, sticky="w")
 
@@ -125,16 +129,14 @@ def populate_frame(root, frame):
                     password_entry.config(state="readonly")
                     password_entry.grid(row=2, column=1, sticky="w")
 
+                    # buttons
                     save_button = tk.Button(card_frame, text="Save", state="disabled")
-
                     edit_button = tk.Button(card_frame, text="Edit")
-
                     edit_button.config(command=lambda se=service_entry, ue=username_entry, pe=password_entry, eb=edit_button, sb=save_button: toggle_edit_mode(se, ue, pe, eb, sb))
                     edit_button.grid(row=3, column=0, pady=5)
                     save_button.config(command=lambda se=service_entry, ue=username_entry, pe=password_entry, eb=edit_button, sb=save_button, index=i+1: save_changes(se, ue, pe, eb, sb, index))
                     save_button.grid(row=3, column=1, pady=5)
 
-                
                     delete_button = tk.Button(card_frame, text="Delete", command=lambda frame=card_frame, index=i+1: delete_card(frame, index))
                     delete_button.grid(row=3, column=2, pady=5)
 
@@ -151,7 +153,7 @@ def populate_frame(root, frame):
     except Exception as e:
         messagebox.showerror("Error", f"Error occurred: {e}")
 
-    
+# dialogue popup to ask new password twice   
 def new_password():
     popup = tk.Toplevel()
     popup.title("Password")
@@ -184,11 +186,12 @@ def new_password():
     # Return the password after the window is destroyed
     return getattr(popup, "password", None)
 
+# ask password once
 def ask_password():
     password = simpledialog.askstring("Password", "Enter password:", show='*')
     return password
 
-
+# main GUI
 def mainWindow():
     root = tk.Tk()
     root.title("Password Manager")
@@ -198,11 +201,11 @@ def mainWindow():
     left_frame = tk.Frame(root)
     left_frame.grid(row=0, column=0, padx=5, pady=5, sticky="n")
 
-    # Create labels for sections
+    # Create labels for section
     file_section_label = tk.Label(left_frame, text="File Section")
     file_section_label.pack(fill=tk.X, padx=5, pady=5)
 
-    # Add separator line above
+    # Add separator line 
     separator1_upper = tk.Frame(left_frame, height=1, width=200, bg="black")
     separator1_upper.pack(fill=tk.X, padx=5, pady=5)
 
@@ -212,14 +215,14 @@ def mainWindow():
     new_file_button = tk.Button(left_frame, text="New Passwords File", command=lambda:init_new_file(inner_frame))
     new_file_button.pack(fill=tk.X, padx=5, pady=5)
 
-    # Add separator line below
+    # Add separator line 
     separator1_lower = tk.Frame(left_frame, height=1, width=200, bg="black")
     separator1_lower.pack(fill=tk.X, padx=5, pady=5)
 
     password_section_label = tk.Label(left_frame, text="Password Section")
     password_section_label.pack(fill=tk.X, padx=5, pady=5)
 
-    # Add separator line above
+    # Add separator line 
     separator2_upper = tk.Frame(left_frame, height=1, width=200, bg="black")
     separator2_upper.pack(fill=tk.X, padx=5, pady=5)
 
@@ -234,7 +237,7 @@ def mainWindow():
     clear_button = tk.Button(left_frame, text="Clear all", command=lambda:clear_passwords(inner_frame))
     clear_button.pack(fill=tk.X, padx=5, pady=5)
 
-    # Add separator line below
+    # Add separator line 
     separator2_lower = tk.Frame(left_frame, height=1, width=200, bg="black")
     separator2_lower.pack(fill=tk.X, padx=5, pady=5)
 

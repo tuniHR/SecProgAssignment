@@ -3,15 +3,17 @@ import secrets
 import string
 from tkinter import filedialog
 from tkinter import messagebox
-from tkinter import simpledialog
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA512
 import gui as ui
 
+# file that is opened, if not value is None
 FILE = None
+# symmetric key, None if file is not open
 KEY = None
 
+# asks password and if correct, will derive encryption key and decrypt content
 def open_file(root, frame):
     global FILE
     file_path = filedialog.askopenfilename(title="Select Password File")
@@ -36,18 +38,19 @@ def open_file(root, frame):
         else:
             messagebox.showwarning("Warning", "No password entered.")
 
-
+# generate symmetric key
 def generate_key(password, salt):
     global KEY
     key = PBKDF2(password, salt, 32, count=1000000, hmac_hash_module=SHA512)
     KEY = key
 
+# simple password creation function, random sequence of letters, numbers and special characters
 def generate_new_password(length=16):
     alphabet = string.ascii_letters + string.digits + string.punctuation
     password = ''.join(secrets.choice(alphabet) for i in range(length))
     return password
 
-    
+# create a new file, ask master password
 def init_new_file(frame):
     global FILE
     file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
@@ -67,9 +70,10 @@ def init_new_file(frame):
             messagebox.showerror("Error", f"Error occurred while creating the file: {e}")
 
 
-
+# save a new password entry to the file
 def add_entry(root, service, username, password, frame):
     if isFileOpen():
+        # concatanate text and then encrypt
         entry = service+","+username+","+password
         cipher = AES.new(KEY, AES.MODE_EAX)
         nonce = cipher.nonce
@@ -87,10 +91,11 @@ def add_entry(root, service, username, password, frame):
     else:
         messagebox.showinfo("Error", "There must be open file to add password")
 
+# get contents of the file decrypted
 def read_and_decrypt_content():
     plaintextArray = []
     with open(FILE, 'r') as file: 
-        next(file)  # Skip the first line
+        next(file)  # Skip the first line, as it is for hashed password
         for line in file:
             encrypted_array = line.strip().split(",")
             if len(encrypted_array) == 3:
@@ -120,6 +125,7 @@ def clear_clipboard(root):
     # Clear the clipboard
     root.clipboard_clear()
 
+# delete password from the ui and from the file
 def delete_card(frame, index):
     try:
         with open(FILE, 'r') as file:
@@ -140,7 +146,7 @@ def delete_card(frame, index):
     except Exception as e:
          messagebox.showerror("Error", f"Error occurred: {e}")
     
-
+# save edited information about the password and associated info to the file, repalce old info
 def save_changes(service_entry, username_entry, password_entry, edit_button, save_button, index):
 
     with open(FILE, 'r') as file:
@@ -170,14 +176,16 @@ def save_changes(service_entry, username_entry, password_entry, edit_button, sav
     edit_button.config(state="normal")
     ui.toggle_edit_mode(service_entry, username_entry, password_entry, edit_button, save_button)
 
-
+# change the master password
 def change_password():
     if isFileOpen():
         try:
+            # ask twice
             password = ui.new_password()
             salt = secrets.token_bytes(32)
             hashed_password = hashlib.sha256(password.encode('utf-8') + salt).hexdigest()
             passwordsArray = read_and_decrypt_content()
+            # re-encrypt the file with new key obtained from the new master password
             with open(FILE, 'w') as file: 
                 file.write(f"{hashed_password}, {salt.hex()}")
                 generate_key(password, salt)
